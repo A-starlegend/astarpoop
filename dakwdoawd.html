@@ -1,126 +1,161 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>지렁이 게임</title>
+<title>더 어려운 슈팅 게임</title>
 <style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
     canvas {
-        border: 1px solid black;
+        display: block;
+        background-color: black;
     }
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+    var canvas = document.getElementById("gameCanvas");
+    var ctx = canvas.getContext("2d");
 
-    const GRID_SIZE = 20;
-    const SNAKE_SPEED = 150;
-    const APPLE_COLOR = "red";
-    const HEAD_COLOR = "green";
-    const BODY_COLOR = "lightgreen";
+    var player = {
+        x: canvas.width / 2,
+        y: canvas.height - 50,
+        width: 30,
+        height: 30,
+        color: "blue",
+        speed: 5
+    };
 
-    let snake = [{ x: 10, y: 10 }];
-    let apple = { x: 15, y: 15 };
-    let score = 0;
-    let dx = 0;
-    let dy = 0;
+    var bullets = [];
+    var enemies = [];
 
-    function clearCanvas() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    var score = 0;
+
+    var rightPressed = false;
+    var leftPressed = false;
+    document.addEventListener("keydown", keyDownHandler, false);
+    document.addEventListener("keyup", keyUpHandler, false);
+
+    function keyDownHandler(e) {
+        if(e.key === "Right" || e.key === "ArrowRight") {
+            rightPressed = true;
+        } else if(e.key === "Left" || e.key === "ArrowLeft") {
+            leftPressed = true;
+        } else if (e.key === "Spacebar" || e.key === " ") {
+            bullets.push({ x: player.x + player.width / 2, y: player.y, radius: 5, color: "yellow", speed: 7 });
+        }
     }
 
-    function drawSnake() {
-        ctx.fillStyle = HEAD_COLOR;
-        ctx.beginPath();
-        ctx.arc(snake[0].x * GRID_SIZE + GRID_SIZE / 2, snake[0].y * GRID_SIZE + GRID_SIZE / 2, GRID_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
+    function keyUpHandler(e) {
+        if(e.key === "Right" || e.key === "ArrowRight") {
+            rightPressed = false;
+        } else if(e.key === "Left" || e.key === "ArrowLeft") {
+            leftPressed = false;
+        }
+    }
 
-        ctx.fillStyle = BODY_COLOR;
-        for (let i = 1; i < snake.length; i++) {
+    function drawPlayer() {
+        ctx.beginPath();
+        ctx.rect(player.x, player.y, player.width, player.height);
+        ctx.fillStyle = player.color;
+        ctx.fill();
+        ctx.closePath();
+    }
+
+    function drawBullets() {
+        for (var i = 0; i < bullets.length; i++) {
             ctx.beginPath();
-            ctx.arc(snake[i].x * GRID_SIZE + GRID_SIZE / 2, snake[i].y * GRID_SIZE + GRID_SIZE / 2, GRID_SIZE / 2, 0, Math.PI * 2);
+            ctx.arc(bullets[i].x, bullets[i].y, bullets[i].radius, 0, Math.PI * 2);
+            ctx.fillStyle = bullets[i].color;
             ctx.fill();
+            ctx.closePath();
         }
     }
 
-    function drawApple() {
-        ctx.fillStyle = APPLE_COLOR;
-        ctx.beginPath();
-        ctx.arc(apple.x * GRID_SIZE + GRID_SIZE / 2, apple.y * GRID_SIZE + GRID_SIZE / 2, GRID_SIZE / 2, 0, Math.PI * 2);
-        ctx.fill();
-    }
-
-    function drawScore() {
-        ctx.fillStyle = "black";
-        ctx.font = "20px Arial";
-        ctx.fillText("Score: " + score, 10, 30);
-    }
-
-    function moveSnake() {
-        const head = { x: snake[0].x + dx, y: snake[0].y + dy };
-        snake.unshift(head);
-        if (head.x === apple.x && head.y === apple.y) {
-            score++;
-            generateApple();
-        } else {
-            snake.pop();
+    function drawEnemies() {
+        for (var i = 0; i < enemies.length; i++) {
+            ctx.beginPath();
+            ctx.rect(enemies[i].x, enemies[i].y, enemies[i].width, enemies[i].height);
+            ctx.fillStyle = enemies[i].color;
+            ctx.fill();
+            ctx.closePath();
         }
     }
 
-    function generateApple() {
-        apple.x = Math.floor(Math.random() * (canvas.width / GRID_SIZE));
-        apple.y = Math.floor(Math.random() * (canvas.height / GRID_SIZE));
+    function updateScore() {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#fff";
+        ctx.fillText("Score: " + score, 10, 20);
     }
 
-    function checkCollision() {
-        if (
-            snake[0].x < 0 || snake[0].x >= canvas.width / GRID_SIZE ||
-            snake[0].y < 0 || snake[0].y >= canvas.height / GRID_SIZE ||
-            snake.slice(1).some(segment => segment.x === snake[0].x && segment.y === snake[0].y)
-        ) {
-            resetGame();
+    function collisionDetection() {
+        for (var i = 0; i < bullets.length; i++) {
+            for (var j = 0; j < enemies.length; j++) {
+                if (bullets[i].x > enemies[j].x &&
+                    bullets[i].x < enemies[j].x + enemies[j].width &&
+                    bullets[i].y > enemies[j].y &&
+                    bullets[i].y < enemies[j].y + enemies[j].height) {
+                    bullets.splice(i, 1);
+                    enemies.splice(j, 1);
+                    score += 10;
+                }
+            }
         }
     }
 
-    function resetGame() {
-        snake = [{ x: 10, y: 10 }];
-        score = 0;
-        dx = 0;
-        dy = 0;
-        generateApple();
-    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    function mainLoop() {
-        clearCanvas();
-        drawSnake();
-        drawApple();
-        drawScore();
-        moveSnake();
-        checkCollision();
-    }
+        drawPlayer();
+        drawBullets();
+        drawEnemies();
+        updateScore();
+        collisionDetection();
 
-    document.addEventListener("keydown", (event) => {
-        const keyPressed = event.key;
-        if (keyPressed === "ArrowUp" && dy === 0) {
-            dx = 0;
-            dy = -1;
-        } else if (keyPressed === "ArrowDown" && dy === 0) {
-            dx = 0;
-            dy = 1;
-        } else if (keyPressed === "ArrowLeft" && dx === 0) {
-            dx = -1;
-            dy = 0;
-        } else if (keyPressed === "ArrowRight" && dx === 0) {
-            dx = 1;
-            dy = 0;
+        if(rightPressed && player.x < canvas.width - player.width) {
+            player.x += player.speed;
+        } else if(leftPressed && player.x > 0) {
+            player.x -= player.speed;
         }
-    });
 
-    setInterval(mainLoop, SNAKE_SPEED);
+        for (var i = 0; i < bullets.length; i++) {
+            bullets[i].y -= bullets[i].speed;
+            if (bullets[i].y < 0) {
+                bullets.splice(i, 1);
+            }
+        }
+
+        for (var i = 0; i < enemies.length; i++) {
+            enemies[i].y += enemies[i].speed;
+            if (enemies[i].y > canvas.height) {
+                enemies.splice(i, 1);
+            }
+        }
+
+        if (Math.random() < 0.02) {
+            enemies.push({ x: Math.random() * (canvas.width - 30), y: 0, width: 30, height: 30, color: "red", speed: 2 });
+        }
+
+        // 플레이어와 적의 충돌 감지
+        for (var i = 0; i < enemies.length; i++) {
+            if (player.x < enemies[i].x + enemies[i].width &&
+                player.x + player.width > enemies[i].x &&
+                player.y < enemies[i].y + enemies[i].height &&
+                player.y + player.height > enemies[i].y) {
+                alert("게임 오버!");
+                document.location.reload();
+            }
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    draw();
 </script>
 </body>
 </html>
