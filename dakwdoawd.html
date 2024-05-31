@@ -2,160 +2,88 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>더 어려운 슈팅 게임</title>
+<title>Sky Dodger - 하늘 위의 회피</title>
 <style>
     body {
         margin: 0;
-        padding: 0;
         overflow: hidden;
+        background-color: #87CEEB; /* 하늘색 배경 */
     }
-    canvas {
-        display: block;
-        background-color: black;
+    
+    #player {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 50px;
+        height: 50px;
+        background-color: #FFA500; /* 주황색 플레이어 */
+        border-radius: 50%;
+    }
+    
+    .obstacle {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background-color: #8B4513; /* 갈색 장애물 */
+        border-radius: 50%;
     }
 </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
-
+<div id="player"></div>
 <script>
-    var canvas = document.getElementById("gameCanvas");
-    var ctx = canvas.getContext("2d");
-
-    var player = {
-        x: canvas.width / 2,
-        y: canvas.height - 50,
-        width: 30,
-        height: 30,
-        color: "blue",
-        speed: 5
-    };
-
-    var bullets = [];
-    var enemies = [];
-
-    var score = 0;
-
-    var rightPressed = false;
-    var leftPressed = false;
-    document.addEventListener("keydown", keyDownHandler, false);
-    document.addEventListener("keyup", keyUpHandler, false);
-
-    function keyDownHandler(e) {
-        if(e.key === "Right" || e.key === "ArrowRight") {
-            rightPressed = true;
-        } else if(e.key === "Left" || e.key === "ArrowLeft") {
-            leftPressed = true;
-        } else if (e.key === "Spacebar" || e.key === " ") {
-            bullets.push({ x: player.x + player.width / 2, y: player.y, radius: 5, color: "yellow", speed: 7 });
+    const player = document.getElementById('player');
+    let playerX = window.innerWidth / 2;
+    const playerSpeed = 5;
+    
+    function movePlayer(event) {
+        if (event.key === 'ArrowLeft' && playerX > 0) {
+            playerX -= playerSpeed;
+        } else if (event.key === 'ArrowRight' && playerX < window.innerWidth) {
+            playerX += playerSpeed;
         }
+        player.style.left = playerX + 'px';
     }
-
-    function keyUpHandler(e) {
-        if(e.key === "Right" || e.key === "ArrowRight") {
-            rightPressed = false;
-        } else if(e.key === "Left" || e.key === "ArrowLeft") {
-            leftPressed = false;
-        }
-    }
-
-    function drawPlayer() {
-        ctx.beginPath();
-        ctx.rect(player.x, player.y, player.width, player.height);
-        ctx.fillStyle = player.color;
-        ctx.fill();
-        ctx.closePath();
-    }
-
-    function drawBullets() {
-        for (var i = 0; i < bullets.length; i++) {
-            ctx.beginPath();
-            ctx.arc(bullets[i].x, bullets[i].y, bullets[i].radius, 0, Math.PI * 2);
-            ctx.fillStyle = bullets[i].color;
-            ctx.fill();
-            ctx.closePath();
-        }
-    }
-
-    function drawEnemies() {
-        for (var i = 0; i < enemies.length; i++) {
-            ctx.beginPath();
-            ctx.rect(enemies[i].x, enemies[i].y, enemies[i].width, enemies[i].height);
-            ctx.fillStyle = enemies[i].color;
-            ctx.fill();
-            ctx.closePath();
-        }
-    }
-
-    function updateScore() {
-        ctx.font = "16px Arial";
-        ctx.fillStyle = "#fff";
-        ctx.fillText("Score: " + score, 10, 20);
-    }
-
-    function collisionDetection() {
-        for (var i = 0; i < bullets.length; i++) {
-            for (var j = 0; j < enemies.length; j++) {
-                if (bullets[i].x > enemies[j].x &&
-                    bullets[i].x < enemies[j].x + enemies[j].width &&
-                    bullets[i].y > enemies[j].y &&
-                    bullets[i].y < enemies[j].y + enemies[j].height) {
-                    bullets.splice(i, 1);
-                    enemies.splice(j, 1);
-                    score += 10;
+    document.addEventListener('keydown', movePlayer);
+    
+    function createObstacle() {
+        const obstacle = document.createElement('div');
+        obstacle.classList.add('obstacle');
+        obstacle.style.left = Math.random() * (window.innerWidth - 30) + 'px'; /* 장애물이 화면 내 임의의 위치에서 생성 */
+        obstacle.style.top = '-30px'; /* 위에서 시작 */
+        document.body.appendChild(obstacle);
+        
+        function moveObstacle() {
+            const obstacleTop = parseInt(obstacle.style.top);
+            if (obstacleTop > window.innerHeight) {
+                obstacle.remove();
+            } else {
+                obstacle.style.top = obstacleTop + 5 + 'px'; /* 장애물이 아래로 떨어지는 속도 */
+                if (checkCollision(obstacle)) {
+                    gameOver();
                 }
             }
         }
+        setInterval(moveObstacle, 50); /* 장애물 이동 간격을 더 짧게 */
     }
-
-    function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        drawPlayer();
-        drawBullets();
-        drawEnemies();
-        updateScore();
-        collisionDetection();
-
-        if(rightPressed && player.x < canvas.width - player.width) {
-            player.x += player.speed;
-        } else if(leftPressed && player.x > 0) {
-            player.x -= player.speed;
-        }
-
-        for (var i = 0; i < bullets.length; i++) {
-            bullets[i].y -= bullets[i].speed;
-            if (bullets[i].y < 0) {
-                bullets.splice(i, 1);
-            }
-        }
-
-        for (var i = 0; i < enemies.length; i++) {
-            enemies[i].y += enemies[i].speed;
-            if (enemies[i].y > canvas.height) {
-                enemies.splice(i, 1);
-            }
-        }
-
-        if (Math.random() < 0.02) {
-            enemies.push({ x: Math.random() * (canvas.width - 30), y: 0, width: 30, height: 30, color: "red", speed: 2 });
-        }
-
-        // 플레이어와 적의 충돌 감지
-        for (var i = 0; i < enemies.length; i++) {
-            if (player.x < enemies[i].x + enemies[i].width &&
-                player.x + player.width > enemies[i].x &&
-                player.y < enemies[i].y + enemies[i].height &&
-                player.y + player.height > enemies[i].y) {
-                alert("게임 오버!");
-                document.location.reload();
-            }
-        }
-
-        requestAnimationFrame(draw);
+    setInterval(createObstacle, 1000); /* 장애물 생성 간격을 더 짧게 */
+    
+    function checkCollision(obstacle) {
+        const playerRect = player.getBoundingClientRect();
+        const obstacleRect = obstacle.getBoundingClientRect();
+        return !(
+            playerRect.top > obstacleRect.bottom ||
+            playerRect.right < obstacleRect.left ||
+            playerRect.bottom < obstacleRect.top ||
+            playerRect.left > obstacleRect.right
+        );
     }
-
-    draw();
+    
+    function gameOver() {
+        alert('게임 오버!');
+        window.location.reload(); /* 게임 다시 시작 */
+    }
 </script>
 </body>
 </html>
